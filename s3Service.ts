@@ -82,7 +82,7 @@ export class S3Service {
       try {
 
       this._connect();
-
+      
       this._s3.headObject({
         Bucket: this._s3Bucket,
         Key: (prefix || '') + key,
@@ -99,16 +99,19 @@ export class S3Service {
     });
   }
 
-  public putObject(key: string, body: string, prefix?: string, metadata?: any) : Promise<any>  {
+  public putObject(key: string, body: string, acl: string, keepMetadata: boolean, prefix?: string, metadata?: any) : Promise<any>  {
     return new Promise((resolve, reject) => {
       try {
 
       this._connect();
 
+      //TODO: if keepMetadata, retrieve current list of metadata keys and merge with metadata object
+
       this._s3.putObject({
         Bucket: this._s3Bucket,
         Body: body,
         Key: (prefix || '') + key,
+        ACL: acl,
         Metadata: (metadata || null)
       }, (err, data) => {
           if (err) {
