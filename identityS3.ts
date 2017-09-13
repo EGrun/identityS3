@@ -17,6 +17,7 @@ export class IdentityS3Post {
   private _identityKey: string;
   private _entity: any;
   private _metadata: any;
+  private _acl: string;
 
   /**
    * Creates an instance of IdentityS3Post.
@@ -25,10 +26,11 @@ export class IdentityS3Post {
    * @param {string} prefix Prefix or folder path to store entities, must include trailing delimiter
    * @param {string} extension File extension to store entities, i.e. '.json'
    * @param {string} identityKey Identity will be stored to this location on the entity data
+   * @param {string} acl ACL for items stored to S3
    * @param {*} [metadata] Optional, metadata that will be stored on the file at S3
    * @memberof IdentityS3Post
    */
-  constructor(entity: any, s3Service: S3Service, prefix: string, extension: string, identityKey: string, metadata?: any) {
+  constructor(entity: any, s3Service: S3Service, prefix: string, extension: string, identityKey: string, acl: string, metadata?: any) {
 
     if (!s3Service) {
       throw "Invalid s3Service.";
@@ -39,12 +41,16 @@ export class IdentityS3Post {
     if (!entity) {
       throw "Invalid entity.";
     }
+    if (!acl) {
+      throw "Invalid S3 ACL";
+    }
 
     this._s3Service = s3Service;
     this._prefix = prefix;
     this._extension = extension;
     this._identityKey = identityKey;
     this._entity = entity;
+    this._acl = acl;
     this._metadata = metadata;
   }
 
@@ -80,10 +86,12 @@ export class IdentityS3Post {
             this._s3Service.putObject(
                 nextId+this._extension, 
                 JSON.stringify(this._entity), 
-                this._prefix, 
+                this._acl,
+                false,
+                this._prefix,
                 this._metadata)
                 .then(
-                    resolved => {resolve()}, 
+                    resolved => {resolve(this._entity)}, 
                     rejected => {reject(rejected)})}, 
 
         rejected => {reject(rejected)})});
@@ -104,6 +112,7 @@ export class IdentityS3Put {
   private _identityKey: string;
   private _id: number;
   private _entity: any;
+  private _acl: string;
   private _metadata: any;
 
   /**
@@ -114,10 +123,11 @@ export class IdentityS3Put {
    * @param {string} prefix Prefix or folder path to store entities, must include trailing delimiter
    * @param {string} extension File extension to store entities, i.e. '.json'
    * @param {string} identityKey Identity will be stored to this location on the entity data
+   * @param {string} acl ACL for items stored to S3
    * @param {*} [metadata] Optional, metadata that will be stored on the file at S3
    * @memberof IdentityS3Put
    */
-  constructor(id: number, entity: any, s3Service: S3Service, prefix: string, extension: string, identityKey: string, metadata?: any) {
+  constructor(id: number, entity: any, s3Service: S3Service, prefix: string, extension: string, identityKey: string, acl: string, metadata?: any) {
 
     if (!s3Service) {
       throw "Invalid s3Service.";
@@ -131,6 +141,9 @@ export class IdentityS3Put {
     if (!entity) {
       throw "Invalid entity.";
     }
+    if (!acl) {
+      throw "Invalid S3 ACL";
+    }
     if (identityKey && id != entity[identityKey])
     {
       throw `Provided Id [${id}] does not match identity key on entity [${entity[identityKey]}].`;
@@ -142,6 +155,7 @@ export class IdentityS3Put {
     this._identityKey = identityKey;
     this._id = id;
     this._entity = entity;
+    this._acl = acl;
     this._metadata = metadata;
   }
 
@@ -161,17 +175,19 @@ export class IdentityS3Put {
       this._s3Service.exists(s3Key, this._prefix).then(exists => 
       {
         if (!exists) {
-          reject(`S3 key [${s3Key}] not found.`)
+          reject(`S3 key [${(this._prefix || '') + s3Key}] not found.`)
         }
 
         //persist entity
         this._s3Service.putObject(
             s3Key, 
             JSON.stringify(this._entity), 
+            this._acl, 
+            true,
             this._prefix,
             this._metadata)
             .then(
-                resolved => {resolve()},
+                resolved => {resolve(this._entity)},
                 rejected => {reject(rejected)})
 
       }, rejected => {reject(rejected)})

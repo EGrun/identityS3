@@ -47,6 +47,7 @@ export async function post(event, context, callback) {
   const s3Bucket = <string>process.env.S3_BUCKET;
   const s3Prefix = <string>process.env.S3_PREFIX;
   const s3Extension = <string>process.env.S3_EXTENSION;
+  const acl = <string>process.env.S3_OBJECT_ACL;
   const identityKey = <string>process.env.IDENTITY_KEY;
   const metadataKeys = <string>process.env.METADATA_KEYS ? (<string>process.env.METADATA_KEYS).split(";") : null;
   const metadata = parseMetadata(metadataKeys, event.headers);
@@ -60,8 +61,8 @@ export async function post(event, context, callback) {
   
   try {
     const s3Service = new S3Service(s3Bucket);
-    new IdentityS3Post(entity, s3Service, s3Prefix, s3Extension, identityKey, metadata).post().then(
-      fulfill => WebUtils.withContext(event, callback).success("Processed"),
+    new IdentityS3Post(entity, s3Service, s3Prefix, s3Extension, identityKey, acl, metadata).post().then(
+      fulfill => WebUtils.withContext(event, callback).success(fulfill[identityKey]),
       rejected => WebUtils.withContext(event, callback).error(rejected, 500));
   }
   catch (e)
@@ -75,6 +76,7 @@ export async function put(event, context, callback) {
   const s3Bucket = <string>process.env.S3_BUCKET;
   const s3Prefix = <string>process.env.S3_PREFIX;
   const s3Extension = <string>process.env.S3_EXTENSION;
+  const acl = <string>process.env.S3_OBJECT_ACL;
   const identityKey = <string>process.env.IDENTITY_KEY;
   const metadataKeys = <string>process.env.METADATA_KEYS ? (<string>process.env.METADATA_KEYS).split(";") : null;
   const metadata = parseMetadata(metadataKeys, event.headers);
@@ -92,6 +94,8 @@ export async function put(event, context, callback) {
     return;
   }
   const entityId = event.pathParameters[identityKey];
+console.log(`id: [${entityId}] - entityId: [${entity[identityKey]}]`);
+
   if (entityId != entity[identityKey])
   {
     WebUtils.withContext(event, callback).error(`Provided Id [${entityId}] does not match identity key on entity [${entity[identityKey]}].`, 400);
@@ -100,8 +104,11 @@ export async function put(event, context, callback) {
 
   try {
     const s3Service = new S3Service(s3Bucket);
-    new IdentityS3Put(entityId, entity, s3Service, s3Prefix, s3Extension, identityKey, metadata).put().then(
-      fulfill => WebUtils.withContext(event, callback).success("Processed"),
+    new IdentityS3Put(entityId, entity, s3Service, s3Prefix, s3Extension, identityKey, acl, metadata).put().then(
+      fulfill => {
+        //todo: publish to SNS
+        WebUtils.withContext(event, callback).success("OK");
+      },
       rejected => WebUtils.withContext(event, callback).error(rejected, 500));
   }
   catch (e) {

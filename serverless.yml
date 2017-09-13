@@ -1,20 +1,31 @@
-service: cmc4-config-convention
+service: ${opt:service, env:SERVICE_NAME, ''}
+
+custom:
+  stage: ${opt:stage, env:AWS_STAGE, self:provider.stage}
+  region: ${opt:region, env:AWS_REGION, self:provider.region}
+  bucket: ${opt:bucket, env:S3_BUCKET, ''}
+  prefix: ${opt:prefix, env:S3_PREFIX, ''}
+  entity: ${opt:entity, env:ENTITY_NAME, ''}
+  identityKey: ${opt:id, env:IDENTITY_KEY, ''}
+  objectacl: ${env:S3_OBJECT_ACL, 'private'}
+  metadataKeys: author;editor
+  extension: .json
 
 provider:
   name: aws
   runtime: nodejs6.10
   memorySize: 128
   timeout: 30
-
   stage: dev
   region: us-east-2
 
   environment:
-    S3_BUCKET: cmc4-config
-    S3_PREFIX: conventions/
-    S3_EXTENSION: .json
-    IDENTITY_KEY: conventionId
-    METADATA_KEYS: author;editor
+    S3_BUCKET: ${self:custom.bucket}
+    S3_PREFIX: ${self:custom.prefix}
+    S3_EXTENSION: ${self:custom.extension}
+    S3_OBJECT_ACL: ${self:custom.objectacl}
+    IDENTITY_KEY: ${self:custom.identityKey}
+    METADATA_KEYS: ${self:custom.metadataKeys}
 
   iamRoleStatements:
     - Effect: "Allow"
@@ -27,25 +38,30 @@ provider:
     - Effect: "Allow"
       Action:
         - "s3:ListBucket"
+      Resource: "arn:aws:s3:::${self:custom.bucket}"
+
+    - Effect: "Allow"
+      Action:
         - "s3:GetObject"
         - "s3:PutObject"
-      Resource: "*"
+        - "s3:PutObjectAcl"
+      Resource: "arn:aws:s3:::${self:custom.bucket}/*"
 
 functions:
-  conventionPost:
+  post:
     handler: handler.post
 
     events:
       - http:
-          path: config/convention
+          path: ${self:service}/${self:custom.entity}
           method: post
 
-  conventionPut:
+  put:
     handler: handler.put
 
     events:
       - http:
-          path: config/convention/{conventionId}
+          path: ${self:service}/${self:custom.entity}/{${self:custom.identityKey}}
           method: put  
 
 plugins:
