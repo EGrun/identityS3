@@ -55,6 +55,7 @@ functions:
       - http:
           path: ${self:service}/${self:custom.entity}
           method: post
+          cors: true
 
   put:
     handler: handler.put
@@ -63,6 +64,7 @@ functions:
       - http:
           path: ${self:service}/${self:custom.entity}/{${self:custom.identityKey}}
           method: put  
+          cors: true
 
 plugins:
   - serverless-plugin-typescript
